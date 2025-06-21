@@ -1,10 +1,10 @@
 @MarvelCharacters
 #noinspection CucumberUndefinedStep
-
 Feature: As a S.H.I.E.L.D. Agent, I want to manage the Marvel Characters
 
   Background:
     * def marvel = callonce read('../step/marvel-characters-step.js')
+    * def LocalStorage = Java.type('com.pichincha.shared.caching.LocalStorage')
     * url endpoints.marvel + '/cagomezr/api/characters'
 
   @id:1 @MarvelCharacters @POST @Successfully
@@ -14,9 +14,17 @@ Feature: As a S.H.I.E.L.D. Agent, I want to manage the Marvel Characters
     When method post
     Then status 201
     And match response.name ==  <name>
+
+    * def heroId = response.id
+    * def heroName = response.name
+    * eval var heroData = { id: heroId, name: heroName }
+    * def name = <name>
+    * eval LocalStorage.put(name, heroData)
+
     Examples:
       | name     |
       | 'Camilo' |
+      | 'Andres' |
 
   @id:2 @MarvelCharacters @POST @Failed
   Scenario: Should return an error when trying to create a hero with the same name.
@@ -26,7 +34,7 @@ Feature: As a S.H.I.E.L.D. Agent, I want to manage the Marvel Characters
     Then status 400
     And match response.error == 'Character name already exists'
 
-  @id:3 @MarvelCharacters @POST @Failed @Create
+  @id:3 @MarvelCharacters @POST @Failed
   Scenario: Should return an error when trying to create a hero with incomplete information.
     * def payload = marvel.buildEmptyPayload()
     Given request payload
@@ -36,16 +44,17 @@ Feature: As a S.H.I.E.L.D. Agent, I want to manage the Marvel Characters
 
   @id:4 @MarvelCharacters @PUT @Successfully
   Scenario Outline: Should update a new hero with <name> task
+    * def id = LocalStorage.get(<name>).id
     * def payload = marvel.buildPayload(<name>)
     * def newAlterego = payload.alterego
-    Given path <id>
+    Given path id
     And request payload
     When method put
     Then status 200
     And match response.alterego == newAlterego
     Examples:
-      | id | name     |
-      | 57 | 'Camilo' |
+      | name     |
+      | 'Camilo' |
 
   @id:5 @MarvelCharacters @PUT @Failed
   Scenario Outline: Should return an error when trying to update a hero that does not exist..
@@ -66,16 +75,19 @@ Feature: As a S.H.I.E.L.D. Agent, I want to manage the Marvel Characters
     Given method get
     Then status 200
     And match response[*].name contains 'Camilo'
+    And match response[*].name contains 'Andres'
 
   @id:7 @MarvelCharacters @GET @Successfully
   Scenario Outline: Should get the information from the hero <name>
-    Given path <id>
+    * def id = LocalStorage.get(<name>).id
+    Given path id
     And method get
     Then status 200
     And match response.name == <name>
     Examples:
-      | id | name     |
-      | 57 | 'Camilo' |
+      | name     |
+      | 'Camilo' |
+      | 'Andres' |
 
   @id:8 @MarvelCharacters @GET @Failed
   Scenario Outline: Should return an error when trying to query a hero that does not exist.
@@ -101,9 +113,11 @@ Feature: As a S.H.I.E.L.D. Agent, I want to manage the Marvel Characters
 
   @id:7 @MarvelCharacters @DELETE @Successfully @DeleteByName
   Scenario Outline: Should remove the hero named <name>
-    Given path <id>
+    * def id = LocalStorage.get(<name>).id
+    Given path id
     And method delete
     Then status 204
     Examples:
-      | id | name    |
-      | 57 | 'Camilo |
+      | name     |
+      | 'Camilo' |
+      | 'Andres' |
